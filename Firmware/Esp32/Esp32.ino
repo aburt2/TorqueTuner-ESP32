@@ -1,33 +1,19 @@
 // #include <SPI.h>
 #include <Wire.h>
-#include <WiFi.h>
 #include <cmath>
-#include "mapper.h"
-#include "Filter.h"
-#include <TinyPICO.h>
-
+#include <AccelStepper.h>
 #include "haptics.h"
 
-// For disabling power saving
-#include "esp_wifi.h"
 
-// --------  Wifi Credentials   ----------
-
-// Home
-// const char* SSID     = "Peberfrugt";
-// const char* PASSWORD = "un3bout3ill3alam3r";
-
-// Home
-const char* SSID     = "tstick_network_SPCL";
-const char* PASSWORD = "mappings";
-
-// Mathias K Iphone
-// const char* SSID     = "Graveyard";
-// const char* PASSWORD = "yoloyolo";
-
-// Mathias B smartphone
-// const char* SSID     = "MathiasB";
-// const char* PASSWORD = "yoloyolo";
+// Motor pin definitions:
+#define motorPin1  11      // IN1
+#define motorPin2  10      // IN2 
+#define motorPin3  9     // IN3 
+#define motorPin4  8     // IN4 
+// Define the AccelStepper interface type; 4 wire motor in full step mode:
+#define MotorInterfaceType 4
+// Initialize with pin sequence IN1-IN3-IN2-IN4 for using the AccelStepper library with 28BYJ-48 stepper motor:
+AccelStepper stepper = AccelStepper(MotorInterfaceType, motorPin1, motorPin3, motorPin2, motorPin4);
 
 
  #define TSTICKJOINT 1
@@ -67,22 +53,6 @@ TorqueTuner knob;
 int connected = 0;
 bool is_playing = true;
 
-// Libmapper variables
-mapper_signal in_sig_scale;
-mapper_signal in_sig_stretch;
-mapper_signal in_sig_mode;
-mapper_signal in_sig_target_velocity;
-mapper_signal in_sig_offset;
-mapper_signal in_sig_damping;
-
-mapper_signal out_sig_angle;
-mapper_signal out_sig_velocity;
-mapper_signal out_sig_trigger;
-mapper_signal out_sig_speed;
-mapper_signal out_sig_quant_angle;
-mapper_signal out_sig_acceleration;
-mapper_device dev;
-
 int pressure = 0;
 int sel = 0;
 int sel_min = 0;
@@ -105,48 +75,60 @@ uint16_t calcsum(uint8_t buf[], uint8_t length) {
   return val;
 }
 
-int init_wifi(const char* ssid, const char* password, int timeout_ms) {
-  int time = millis();
-  printf("Connecting to: %s", ssid);
+// Define Pins
+int analogPin = 1;
+int interruptPin = 2;
+int val = 0;     // variable to store the read value
+int switch1 = 0;
+int state = 0;
 
-  WiFi.begin(ssid, password);
+//Set spinning speed
+int clockSpeed = 1000;
 
-  while (WiFi.status() != WL_CONNECTED) {
-    printf(".");
-    if (millis() - time > timeout_ms) {
-      printf(" Timeout waiting for connection \n");
-      return 0;
+// use 2ms debounce time
+#define DEBOUNCE_TICKS (word)microsecondsToClockCycles(15)
+
+extern volatile unsigned long timer0_overflow_count;
+word keytick;  // record time of keypress
+
+int CHANGE_STATE(int cur_state) {
+  int new_state = 0;
+  Serial.print("Current State: ");
+  Serial.println(cur_state);
+  if (cur_state == 0) {
+    new_state = 1;
+  } 
+  else if (cur_state == 1) {
+    new_state = 2;
+  }
+  else if (cur_state == 2) {
+    new_state = 0;
+  }
+  else {
+    state = 0;
+  }
+  
+  
+  Serial.print("New State: ");
+  Serial.println(new_state);
+  return new_state;
+}
+
+void KeyPress() {
+  keytick=(word)timer0_overflow_count;
+}
+
+// returns true if key pressed
+boolean KeyCheck() {
+  if (keytick!=0) {
+    if (((word)timer0_overflow_count-keytick)>DEBOUNCE_TICKS) {
+      keytick=0;
+      return true;
     }
-    delay(500);
   }
-  IPAddress ip = WiFi.localIP();
-  printf("\n Wifi Connected \n IP adress:  %u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]);
-  return 1;
+  return false;
 }
 
-
-bool update_btn(const int pin) {
-  static bool last_val;
-  static bool has_changed;
-  static int32_t last_change;
-  // Read button pin
-  int32_t now = esp_timer_get_time();
-  bool val =  !digitalRead(pin);
-  if (val != last_val) {
-    last_val = val;
-    last_change = now;
-    has_changed = true;
-  }
-
-  // Debounce button and trigger on release
-  if (has_changed && (now - last_change) > DEBOUNCE_TIME  && !val) {
-    has_changed = false;
-    return true;
-  } else {
-    return false;
-  }
-
-}
 
 
 int read_param(float * param, uint8_t*  data, uint8_t length) {
@@ -193,91 +175,8 @@ void sendI2C(TorqueTuner * knob_) {
   Wire.endTransmission();    // stop transmitting
 }
 
-
-void in_sig_scale_callback(mapper_signal sig, mapper_id instance, const void *value, int count, mapper_timetag_t *tt) {
-  knob.scale =  *((float*)value);
-}
-
-void in_sig_stretch_callback(mapper_signal sig, mapper_id instance, const void *value, int count, mapper_timetag_t *tt) {
-  knob.stretch =  *((float*)value);
-}
-
-void in_sig_offset_callback(mapper_signal sig, mapper_id instance, const void *value, int count, mapper_timetag_t *tt) {
-  knob.active_mode->offset = (*((float*)value));
-}
-
-void in_sig_mode_callback(mapper_signal sig, mapper_id instance, const void *value, int count, mapper_timetag_t *tt) {
-  knob.set_mode(*((int32_t*)value));
-}
-
-void in_sig_target_velocity_callback(mapper_signal sig, mapper_id instance, const void *value, int count, mapper_timetag_t *tt) {
-  knob.target_velocity = (*((float*)value));
-}
-
-void in_sig_damping_callback(mapper_signal sig, mapper_id instance, const void *value, int count, mapper_timetag_t *tt) {
-  knob.active_mode->damping = (*((float*)value));
-}
-
-
-void init_mapper_signals() {
-  dev = mapper_device_new("TorqueTuner", 0, 0);
-
-  // Init libmapper inputs
-  float scale_min = -230;
-  float scale_max = 230;
-  in_sig_scale = mapper_device_add_input_signal(dev, "Scale", 1, 'f', "Ncm", &scale_min, &scale_max, in_sig_scale_callback, NULL);
-
-  float angle_scale_min = 0;
-  float angle_scale_max = 30;
-  in_sig_stretch = mapper_device_add_input_signal(dev, "Stretch", 1, 'f', "ratio", &angle_scale_min, &angle_scale_max, in_sig_stretch_callback, NULL);
-
-  int mode_min = 0;
-  int mode_max = knob.num_modes - 1;
-  sel_max = mode_max;
-  in_sig_mode = mapper_device_add_input_signal(dev, "Mode", 1, 'i', "mode", &mode_min, &mode_max, in_sig_mode_callback, NULL);
-
-  float vel_min = -700;
-  float vel_max = 700;
-  in_sig_target_velocity = mapper_device_add_input_signal(dev, "TargetVelocity", 1, 'f', "Rpm", &vel_min, &vel_max, in_sig_target_velocity_callback, NULL);
-
-  float offset_min = -1800;
-  float offset_max = 1800;
-  in_sig_offset = mapper_device_add_input_signal(dev, "Offset", 1, 'f', "degrees", &offset_min, &offset_max, in_sig_target_velocity_callback, NULL);
-
-  float damping_min = -1;
-  float damping_max = 1;
-  in_sig_damping = mapper_device_add_input_signal(dev, "Damping", 1, 'f', "ratio", &offset_min, &offset_max, in_sig_target_velocity_callback, NULL);
-
-  // Init libmapper outputs
-  int angle_min = 0;
-  int angle_max = 3600;
-  out_sig_angle = mapper_device_add_output_signal(dev, "Angle", 1, 'i', 0, &angle_min, &angle_max);
-
-  out_sig_velocity = mapper_device_add_output_signal(dev, "Velocity", 1, 'f', 0, &vel_min, &vel_max);
-
-  int trig_min = 0;
-  int trig_max = 1;
-  out_sig_trigger = mapper_device_add_output_signal(dev, "Trigger", 1, 'i', 0, &trig_min, &trig_max);
-
-  float speed_min = 0;
-  float speed_max = vel_max;
-  out_sig_speed = mapper_device_add_output_signal(dev, "Speed", 1, 'f', 0, &speed_min, &speed_max);
-
-  out_sig_quant_angle = mapper_device_add_output_signal(dev, "QuantAngle", 1, 'i', 0, &angle_min, &angle_max);
-
-  float acc_min = -100;
-  float acc_max = 100;
-  out_sig_acceleration = mapper_device_add_output_signal(dev, "Acceleration", 1, 'f', 0, &acc_min, &acc_max);
-
-}
-
 void setup() {
   Serial.begin(115200);
-  connected = init_wifi(SSID, PASSWORD, 30000);
-  // if (connected) {
-  init_mapper_signals();
-  // }
-  esp_wifi_set_ps(WIFI_PS_NONE);
 
   Wire.begin(SDA_PIN, SCL_PIN);
   Wire.setClock(I2CUPDATE_FREQ); // Fast mode plus
@@ -293,9 +192,6 @@ void setup() {
 }
 
 void loop() {
-
-  // Update libmapper connections
-  mapper_device_poll(dev, 0);
 
   now = micros();
   if (now - last_time > HAPTICS_UPDATE_RATE) {
@@ -316,15 +212,7 @@ void loop() {
         knob.target_velocity = 0;
       }
       sendI2C(&knob);
-
-      // Update libmapper outputs
-      mapper_signal_update(out_sig_angle, &knob.angle_out, 1, MAPPER_NOW);
-      mapper_signal_update(out_sig_velocity, &knob.velocity, 1, MAPPER_NOW);
-      mapper_signal_update(out_sig_trigger, &knob.trigger, 1, MAPPER_NOW);
       float speed = abs(knob.velocity);
-      mapper_signal_update(out_sig_speed, &speed, 1, MAPPER_NOW);
-      mapper_signal_update(out_sig_quant_angle, &knob.angle_discrete, 1, MAPPER_NOW);
-      mapper_signal_update(out_sig_acceleration, &knob.acceleration, 1, MAPPER_NOW);
 
     }
     last_time = now;
@@ -340,28 +228,3 @@ void loop() {
     // printf("Target velocity: %f \n", knob.target_velocity);
     last_time_gui = now;
   }
-
-
-  /* ------------------------------*/
-  /* -------- Maintenance ---------*/
-  /* ------------------------------*/
-
-// Reconnect to wifi if not connected
-  if (now - last_time_maintenance > MAINTENANCE_RATE) {
-    if (WiFi.status() != WL_CONNECTED) {
-      connected = init_wifi(SSID, PASSWORD, 0);
-      delay(100);
-      if (WiFi.status() == WL_CONNECTED) {
-        // init_mapper_signals();
-      }
-    }
-    // Check LiPo battery voltage
-    float voltage = tp.GetBatteryVoltage();
-    if (voltage < 3.1) {
-      is_playing = false;
-      printf("Battery voltage is under 3.3 V, shotting down ...:\n" );
-    }
-    printf("Battery voltage is: %f\n", voltage);
-    last_time_maintenance = now;
-  }
-}
