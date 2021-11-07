@@ -146,8 +146,8 @@ void loop() {
 
     // Recieve Angle and velocity from servo
     pos_delta = pos - stepper.currentPosition();
-    angle_delta = pos_delta*(360/200);
-    knob.angle = knob.angle + angle_delta
+    angle_delta = pos_delta*(3600/200);
+    knob.angle = knob.angle + angle_delta;
 
     // Update torque if valid angle measure is recieved.
     if (is_playing) {
@@ -161,14 +161,4 @@ void loop() {
     stepper.setSpeed(knob.velocity);
     last_time = now;
   }
-
-
-  /* ------------------------------*/
-  /* -------- GUI update  ---------*/
-  /* ------------------------------*/
-
-  if (now - last_time_gui > GUI_RATE) {
-    // printf("DATAREADY %i, %i \n", knob.angle_out);
-    // printf("Target velocity: %f \n", knob.target_velocity);
-    last_time_gui = now;
-  }
+}

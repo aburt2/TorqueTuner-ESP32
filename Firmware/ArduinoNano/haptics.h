@@ -3,12 +3,12 @@
 
 #include <stdint.h>
 #include <math.h>
-#include <vector.h>
-#include "tf_magnet.h"
-#include "tf_click.h"
-#include "tf_exp_spring.h"
-#include "tf_sin.h"
-#include "tf_click_2.h"
+#include "ArduinoSTL.h"
+//#include "tf_magnet.h"
+//#include "tf_click.h"
+//#include "tf_exp_spring.h"
+//#include "tf_sin.h"
+//#include "tf_click_2.h"
 #include "arduino.h"
 
 const int TABLE_RESOLUTION = 65535;
@@ -167,16 +167,16 @@ public:
     float scale = 75.0;
     float stretch = 1; // Corresponds to detents in click and magnet mode.
 
-    Click click;
+    Click click_m;
     Magnet magnet;
     Wall wall;
     LinSpring lin_spring;
     ExpSpring exp_spring;
-    Free free;
+    Free free_m;
     Inertia inertia;
     Spin spin;
     Mode * active_mode;
-    std::vector<int32_t> mode_list = {&click, &magnet, &wall, &inertia, &lin_spring, &exp_spring,  &free, &spin};
+    std::vector<Mode *> mode_list = {&click_m, &magnet, &wall, &inertia, &lin_spring, &exp_spring,  &free_m, &spin};
 
 private:
     // Filter variables
