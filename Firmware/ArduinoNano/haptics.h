@@ -7,7 +7,7 @@
 #include "tf_magnet.h"
 #include "tf_click.h"
 #include "tf_exp_spring.h"
-#include "tf_sin.h"
+//#include "tf_sin.h"
 #include "arduino.h"
 
 const int TABLE_RESOLUTION = 32767; //65535
