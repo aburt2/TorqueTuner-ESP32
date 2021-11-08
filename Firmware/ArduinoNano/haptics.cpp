@@ -247,6 +247,16 @@ int16_t Mode::calc_index(void* ptr) {
 		idx = clip(state, 0,  3600);
     idx = idx/18;
 	}
+//  int state_f = knob->angle_out;
+//  idx = state_f/18;
+////  if (wrap_haptics)
+////  {
+////    idx = mod(state_f, 3600);
+////    idx = idx/18;
+////  } else {
+////    idx = clip(state_f, 0,  3600);
+////    idx = idx/18;
+////  }
 	return idx;
 
 };

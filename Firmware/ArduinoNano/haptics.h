@@ -8,10 +8,9 @@
 #include "tf_click.h"
 #include "tf_exp_spring.h"
 #include "tf_sin.h"
-#include "tf_click_2.h"
 #include "arduino.h"
 
-const int TABLE_RESOLUTION = 65535;
+const int TABLE_RESOLUTION = 32767; //65535
 const int MAX_TORQUE = 1000;
 const int WALL_TORQUE = 1000;
 const float MAX_VELOCITY = 500;
@@ -51,7 +50,7 @@ class Click: public Mode
 {
 public:
     Click() : Mode(MAX_TORQUE / 3.0, 10, 0, 3600) {
-        offset = 1799;
+        offset = 0;
         wrap_output = true;
         wrap_haptics = true;
     }

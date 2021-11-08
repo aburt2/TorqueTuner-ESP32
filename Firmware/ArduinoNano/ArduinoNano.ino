@@ -41,7 +41,7 @@ const uint32_t HAPTICS_UPDATE_RATE = 500 ; // 2 KHz
 const uint32_t I2CUPDATE_FREQ = 3400000; // high speed mode;
 const uint32_t DEBOUNCE_TIME = 10000; // 10 ms
 const uint32_t MAINTENANCE_RATE = 30000000; // 30 s
-const uint32_t GUI_RATE = 33000; //  30 FPS
+const uint32_t GUI_RATE = 1000000; //  30 s
 
 // Initialize TorqueTuner
 TorqueTuner knob;
@@ -101,6 +101,21 @@ int CHANGE_STATE(int cur_state) {
     new_state = 2;
   }
   else if (cur_state == 2) {
+    new_state = 3;
+  }
+  else if (cur_state == 3) {
+    new_state = 4;
+  }  
+  else if (cur_state == 4) {
+    new_state = 5;
+  }
+  else if (cur_state == 5) {
+    new_state = 6;
+  }
+  else if (cur_state == 6) {
+    new_state = 7;
+  }
+  else if (cur_state == 7) {
     new_state = 0;
   }
   else {
@@ -133,45 +148,58 @@ void setup() {
 
 //  Wire.begin(SDA_PIN, SCL_PIN);
 //  Wire.setClock(I2CUPDATE_FREQ); // Fast mode plus
-  knob.set_mode(TorqueTuner::LINSPRING);
+  knob.set_mode(TorqueTuner::MAGNET);
 
-  pinMode(SEL_PIN, INPUT);
+  // Pin Mode
+  attachInterrupt(digitalPinToInterrupt(interruptPin),KeyPress, FALLING);
 }
 
 void loop() {
-
+  val = analogRead(analogPin);
+  val = val * 3600/1023;
   now = micros();
   if (KeyCheck()) {
     state = CHANGE_STATE(state);
     knob.set_mode(state);
   }
-  if (now - last_time > HAPTICS_UPDATE_RATE) {
 
+  // Recieve Angle and velocity from servo
+  pos_delta = pos - stepper.currentPosition();
+  pos = stepper.currentPosition();
+//  Serial.print("Current Position: ");
+//  Serial.println(pos);
+//  angle_delta = pos_delta*(3600/200);
+  angle_delta = 18;
+  knob.angle = knob.angle + angle_delta;
 
-    // Recieve Angle and velocity from servo
-    pos_delta = pos - stepper.currentPosition();
-    angle_delta = pos_delta*(3600/200);
-    knob.angle = knob.angle + angle_delta;
-
-    // Update torque if valid angle measure is recieved.
-    if (is_playing) {
-      knob.update();
-    } else {
-      // OBS: Consider not updating? assign last last value instead? //
-      knob.torque = 0;
-      knob.target_velocity = 0;
-    }
-    float motor_v = knob.target_velocity;
-    stepper.setSpeed(motor_v);
+  // Update torque if valid angle measure is recieved.
+  if (is_playing) {
+    knob.update();
+  } else {
+    // OBS: Consider not updating? assign last last value instead? //
+    knob.torque = 0;
+    knob.target_velocity = 0;
+  }
+  float motor_v = knob.target_velocity;
+  stepper.setSpeed(motor_v);
 //    stepper.runSpeed();
-    last_time = now;
-  }
 
-    if (now - last_time_gui > GUI_RATE) {
-     Serial.print("Current Angle");
-     Serial.println(knob.angle_out);
-     Serial.print("Target velocity");
-     Serial.println(knob.target_velocity);
-    last_time_gui = now;
-  }
+//  if (now - last_time_gui > GUI_RATE) {
+//   Serial.print("Angle Change: ");
+//   Serial.println(angle_delta);
+//   Serial.print("Current Angle: ");
+//   Serial.println(knob.angle_out);
+//   Serial.print("Target velocity: ");
+//   Serial.println(knob.torque);
+//   Serial.println("");
+//  last_time_gui = now;
+//  }
+ Serial.print("Index: ");
+ Serial.println(knob.magnet.idx);
+ Serial.print("Current Angle: ");
+ Serial.println(knob.angle_out);
+ Serial.print("Target velocity: ");
+ Serial.println(knob.torque);
+ Serial.println("");
+ delay(500);
 }
