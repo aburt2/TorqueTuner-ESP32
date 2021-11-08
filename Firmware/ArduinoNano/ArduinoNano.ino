@@ -141,6 +141,10 @@ void setup() {
 void loop() {
 
   now = micros();
+  if (KeyCheck()) {
+    state = CHANGE_STATE(state);
+    knob.set_mode(state);
+  }
   if (now - last_time > HAPTICS_UPDATE_RATE) {
 
 
@@ -157,8 +161,17 @@ void loop() {
       knob.torque = 0;
       knob.target_velocity = 0;
     }
-    float speed = abs(knob.velocity);
-    stepper.setSpeed(knob.velocity);
+    float motor_v = knob.target_velocity;
+    stepper.setSpeed(motor_v);
+//    stepper.runSpeed();
     last_time = now;
+  }
+
+    if (now - last_time_gui > GUI_RATE) {
+     Serial.print("Current Angle");
+     Serial.println(knob.angle_out);
+     Serial.print("Target velocity");
+     Serial.println(knob.target_velocity);
+    last_time_gui = now;
   }
 }

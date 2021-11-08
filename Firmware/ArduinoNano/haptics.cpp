@@ -141,8 +141,8 @@ float TorqueTuner::filter(float x) {
 };
 
 
-float TorqueTuner::gate(float val, float threshold, float floor) {
-	return abs(val) > threshold ? val : floor;
+float TorqueTuner::gate(float val, float threshold, float floor_) {
+	return abs(val) > threshold ? val : floor_;
 };
 
 void TorqueTuner::update_trig() {
@@ -171,20 +171,20 @@ int16_t Wall::calc(void* ptr) {
 
 int16_t Click::calc(void* ptr) {
 	TorqueTuner* knob = (TorqueTuner*)ptr;
-//	float val;
-//	if (knob->angle_out <= min_f) {
-//		val = WALL_TORQUE;
-//	} else if (knob->angle_out >= max_f) {
-//		val = -WALL_TORQUE;
-//	} else {
-//		val = static_cast<float>((tf_click[idx])) / TABLE_RESOLUTION * knob->scale;
-//	}
-//	return static_cast<int16_t> (round(val));
+	float val;
+	if (knob->angle_out <= min_f) {
+		val = WALL_TORQUE;
+	} else if (knob->angle_out >= max_f) {
+		val = -WALL_TORQUE;
+	} else {
+		val = static_cast<float>((tf_click[idx])) / TABLE_RESOLUTION * knob->scale;
+	}
+	return static_cast<int16_t> (round(val));
 };
 
 int16_t Magnet::calc(void* ptr) {
 	TorqueTuner* knob = (TorqueTuner*)ptr;
-//	return static_cast<float>(tf_magnet[idx]) / TABLE_RESOLUTION * knob->scale; // Magnet
+	return static_cast<float>(tf_magnet[idx]) / TABLE_RESOLUTION * knob->scale; // Magnet
 };
 
 int16_t Inertia::calc(void* ptr) {
@@ -210,16 +210,16 @@ int16_t LinSpring::calc(void* ptr) {
 
 int16_t ExpSpring::calc(void* ptr) {
 	TorqueTuner* knob = (TorqueTuner*)ptr;
-//	float val = static_cast<float>(tf_exp_spring[idx]) / TABLE_RESOLUTION;
-//
-//	if (knob->angle_unclipped <= min_f) {
-//		val = 1;
-//	} else if (knob->angle_unclipped >= max_f) {
-//		val = -1;
-//	}
-//
-//	val *= knob->scale;
-//	return static_cast<int16_t> (round(val));
+	float val = static_cast<float>(tf_exp_spring[idx]) / TABLE_RESOLUTION;
+
+	if (knob->angle_unclipped <= min_f) {
+		val = 1;
+	} else if (knob->angle_unclipped >= max_f) {
+		val = -1;
+	}
+
+	val *= knob->scale;
+	return static_cast<int16_t> (round(val));
 };
 
 
@@ -242,8 +242,10 @@ int16_t Mode::calc_index(void* ptr) {
 	if (wrap_haptics)
 	{
 		idx = mod(state, 3600);
+    idx = idx/18;
 	} else {
 		idx = clip(state, 0,  3600);
+    idx = idx/18;
 	}
 	return idx;
 

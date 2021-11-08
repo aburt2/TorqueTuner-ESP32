@@ -4,16 +4,16 @@
 #include <stdint.h>
 #include <math.h>
 #include "ArduinoSTL.h"
-//#include "tf_magnet.h"
-//#include "tf_click.h"
-//#include "tf_exp_spring.h"
-//#include "tf_sin.h"
-//#include "tf_click_2.h"
+#include "tf_magnet.h"
+#include "tf_click.h"
+#include "tf_exp_spring.h"
+#include "tf_sin.h"
+#include "tf_click_2.h"
 #include "arduino.h"
 
 const int TABLE_RESOLUTION = 65535;
-const int MAX_TORQUE = 180;
-const int WALL_TORQUE = 180;
+const int MAX_TORQUE = 1000;
+const int WALL_TORQUE = 1000;
 const float MAX_VELOCITY = 500;
 
 class Mode
