@@ -11,9 +11,9 @@
 #include "arduino.h"
 
 const int TABLE_RESOLUTION = 32767; //65535
-const int MAX_TORQUE = 1000;
-const int WALL_TORQUE = 1000;
-const float MAX_VELOCITY = 500;
+const int MAX_TORQUE = 30;
+const int WALL_TORQUE = 30;
+const float MAX_VELOCITY = 30;
 
 class Mode
 {
